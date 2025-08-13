@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>E-services - Application Bancaire Sécurisée</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<style>
+  :root{
+    --primary:#1e5799;
+    --primary-2:#2568b0;
+    --bg:#f5f7fb;
+    --card:#ffffff;
+    --muted:#6b7280;
+    --ok:#12a150;
+    --err:#e11d48;
+    --shadow:0 8px 30px rgba(0,0,0,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background: linear-gradient(135deg, #1e5799, #2989d8 40%, #1e5799);
+    font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+    color:#111827;
+    display:flex;align-items:center;justify-content:center;
+    padding:16px;
+  }
+
+  /* Login */
+  .login{
+    width:100%;
+    max-width:360px;
+    background:var(--card);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    padding:28px 22px;
+  }
+  .login h2{margin:0 0 16px;color:var(--primary)}
+  .login input{
+    width:100%;padding:12px 14px;border:2px solid var(--primary);
+    border-radius:10px;font-size:16px;outline:none;
+  }
+  .login .btn{
+    width:100%;margin-top:12px;padding:12px 14px;border:0;border-radius:10px;
+    background:var(--primary);color:#fff;font-weight:600;cursor:pointer
+  }
+  .login .btn:hover{background:var(--primary-2)}
+  .login .err{margin-top:8px;color:var(--err);min-height:18px;font-size:14px}
+
+  /* App shell */
+  .app{
+    display:none;
+    width:100%;
+    max-width:720px;
+    height:calc(100vh - 32px);
+    background:var(--card);
+    border-radius:22px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .app .header{
+    background:#fff;
+    padding:14px 18px;
+    border-bottom:1px solid #eef2f7;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .app .header h1{font-size:20px;color:var(--primary);margin:0}
+  .app .body{padding:18px; height:calc(100% - 60px); overflow:auto; background:var(--bg);}
+
+  .card{
+    background:#fff;border-radius:18px;box-shadow:var(--shadow);padding:16px;
+    margin-bottom:16px;
+  }
+  .card h3{margin:0 0 12px;color:var(--primary)}
+
+  label{display:block;margin-bottom:6px;font-size:14px;color:#374151}
+  select,input[type=number]{
+    width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:15px;background:#fff;
+  }
+  .row{display:grid;grid-template-columns:1fr 1fr; gap:12px}
+  @media (max-width:640px){ .row{grid-template-columns:1fr} }
+
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--primary);color:#fff;border:0;border-radius:12px;
+    padding:12px 16px;font-weight:600;cursor:pointer
+  }
+  .btn:hover{background:var(--primary-2)}
+  .muted{color:var(--muted)}
+
+  .info{
+    background:#eef6ff;border:1px solid #dbeafe;color:#1d4ed8;
+    padding:10px;border-radius:10px;font-size:14px
+  }
+
+  .transactions .item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 0;border-bottom:1px solid #f1f5f9;
+  }
+  .transactions .item:last-child{border-bottom:0}
+  .amount{font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- Connexion -->
+<div class="login" id="login">
+  <h2><i class="fa-solid fa-lock"></i> Connexion sécurisée</h2>
+  <input type="password" id="pwd" placeholder="Mot de passe" />
+  <button class="btn" id="loginBtn"><i class="fa-solid fa-right-to-bracket"></i> Se connecter</button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<!-- Application -->
+<div class="app" id="app">
+  <div class="header"><h1>E-services</h1></div>
+  <div class="body">
+
+    <!-- Saisie -->
+    <div class="card">
+      <h3><i class="fa-solid fa-hand-holding-dollar"></i> Nouvelle transaction</h3>
+      <div class="row">
+        <div>
+          <label for="bank"><i class="fa-solid fa-university"></i> Banque</label>
+          <select id="bank">
+            <option value="">-- Choisir une banque --</option>
+          </select>
+        </div>
+        <div>
+          <label for="user"><i class="fa-solid fa-user"></i> Client</label>
+          <select id="user">
+            <option value="">-- Choisir un client --</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label for="amount"><i class="fa-solid fa-euro-sign"></i> Montant (€)</label>
+        <input type="number" id="amount" placeholder="Ex: 150" inputmode="decimal" />
+      </div>
+
+      <div style="margin-top:14px; display:flex; gap:10px; align-items:center;">
+        <button class="btn" id="btnAdd"><i class="fa-solid fa-plus"></i> Ajouter</button>
+        <span class="muted" id="hint">Sélectionne une banque, un client et un montant</span>
+      </div>
+      <div id="msg" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Filtre + Historique -->
+    <div class="card">
+      <h3><i class="fa-solid fa-filter"></i> Filtrer par client</h3>
+      <select id="filterUser">
+        <option value="">-- Tous les clients --</option>
+      </select>
+    </div>
+
+    <div class="card transactions">
+      <h3><i class="fa-solid fa-clock-rotate-left"></i> Historique</h3>
+      <div id="monthlyTotal" class="info" style="display:none;margin-bottom:10px;"></div>
+      <div id="txList"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* =========================
+   Config & Données locales
+   ========================= */
+const CORRECT_PASSWORD = "Eservices1@#*Kouba";
+const API_URL = "https://script.google.com/macros/s/AKfycbx1hgDPqyFdTMyO8rVSnWTa1SrxKVk6V_Y33RHVliTn5bMq0MozZ1j5YcnWlFxZl2-F/exec";
+
+// Banques & Utilisateurs (tu peux modifier ici)
+const banks = ["paypal","paysera","moneco","nickel","myfine","bankera","paypal bus","skrill","netller"];
+const users = ["abdallah","abir","hamza","safia","souad","islam"];
+
+let transactions = []; // {id, user, bank, amount, date, dateObj}
+
+/* =========================
+   Utils
+   ========================= */
+const $ = (id) => document.getElementById(id);
+function toastOK(text){
+  $("msg").innerHTML = `<div class="info" style="border-color:#bbf7d0;background:#ecfdf5;color:#065f46">
+    <i class="fa-solid fa-circle-check"></i> ${text}</div>`;
+}
+function toastERR(text){
+  $("msg").innerHTML = `<div class="info" style="border-color:#fecdd3;background:#fff1f2;color:#9f1239">
+    <i class="fa-solid fa-triangle-exclamation"></i> ${text}</div>`;
+}
+function formatAmount(v){
+  return Number(v).toLocaleString("fr-FR",{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+/* =========================
+   Login
+   ========================= */
+$("loginBtn").addEventListener("click", () => {
+  const p = $("pwd").value;
+  if(p === CORRECT_PASSWORD){
+    $("login").style.display = "none";
+    $("app").style.display = "block";
+    initApp();
+  }else{
+    $("loginErr").textContent = "Mot de passe incorrect.";
+  }
+});
+
+/* =========================
+   Initialisation App
+   ========================= */
+function populateDropdowns(){
+  // banques
+  const bankSel = $("bank"); bankSel.innerHTML = `<option value="">-- Choisir une banque --</option>`;
+  banks.forEach(b=>{
+    const o = document.createElement("option");
+    o.value=b; o.textContent=b.charAt(0).toUpperCase()+b.slice(1);
+    bankSel.appendChild(o);
+  });
+  // utilisateurs
+  const userSel = $("user"); userSel.innerHTML = `<option value="">-- Choisir un client --</option>`;
+  users.forEach(u=>{
+    const o = document.createElement("option");
+    o.value=u; o.textContent=u.charAt(0).toUpperCase()+u.slice(1);
+    userSel.appendChild(o);
+  });
+}
+
+function populateFilterUsers(){
+  const f = $("filterUser");
+  f.innerHTML = `<option value="">-- Tous les clients --</option>`;
+  users.forEach(u=>{
+    const o = document.createElement("option");
+    o.value=u; o.textContent=u.charAt(0).toUpperCase()+u.slice(1);
+    f.appendChild(o);
+  });
+}
+
+function initApp(){
+  populateDropdowns();
+  populateFilterUsers();
+  $("btnAdd").addEventListener("click", handleAdd);
+  $("filterUser").addEventListener("change", renderHistory);
+  // Charger les transactions depuis Google Sheets au démarrage
+  loadTransactionsFromSheet();
+}
+
+/* =========================
+   Google Sheets (GET/POST)
+   ========================= */
+async function loadTransactionsFromSheet(){
+  try{
+    const res = await fetch(API_URL, { cache:"no-store" });
+    const data = await res.json(); // [ [ID, user, bank, amount, date], ... ]
+    // ignorer l'entête
+    transactions = data.slice(1).map(r => {
+      const d = new Date(r[4]);
+      return {
+        id: r[0],
+        user: String(r[1]||"").toLowerCase(),
+        bank: String(r[2]||"").toLowerCase(),
+        amount: parseFloat(r[3]||0),
+        date: r[4],
+        dateObj: isNaN(d.getTime()) ? new Date() : d
+      };
+    }).sort((a,b)=>b.dateObj - a.dateObj);
+    renderHistory();
+  }catch(e){
+    console.error(e);
+    toastERR("Impossible de charger les transactions (Google Sheets). Vérifie que le script est bien *déployé pour tout le monde*.");
+  }
+}
+
+async function sendTransactionToSheet(tx){
+  await fetch(API_URL, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(tx)
+  });
+}
+
+/* =========================
+   Ajout de transaction
+   ========================= */
+async function handleAdd(){
+  const bank = $("bank").value.trim();
+  const user = $("user").value.trim();
+  const amount = parseFloat($("amount").value);
+
+  if(!bank || !user || !amount || amount <= 0){
+    toastERR("Veuillez renseigner une banque, un client et un montant valide.");
+    return;
+  }
+
+  const now = new Date();
+  const tx = {
+    id: Date.now(),
+    user,
+    bank,
+    amount,
+    date: now.toLocaleString("fr-FR")
+  };
+
+  try{
+    // Envoi vers Google Sheets
+    await sendTransactionToSheet(tx);
+    // Recharger depuis Google Sheets (MAJ uniquement après ajout)
+    await loadTransactionsFromSheet();
+
+    $("amount").value = "";
+    toastOK(`${user.toUpperCase()} a reçu ${formatAmount(amount)} € de ${bank.toUpperCase()}.`);
+  }catch(e){
+    console.error(e);
+    toastERR("Erreur lors de l'enregistrement de la transaction.");
+  }
+}
+
+/* =========================
+   Historique + Total mensuel
+   ========================= */
+function renderHistory(){
+  const list = $("txList");
+  const totalBox = $("monthlyTotal");
+  list.innerHTML = "";
+
+  const selUser = $("filterUser").value;
+  let data = transactions;
+
+  if(selUser){
+    data = data.filter(t => t.user === selUser);
+    // Total du mois en cours
+    const now = new Date();
+    const total = data.reduce((sum,t)=>{
+      return (t.dateObj.getMonth() === now.getMonth() && t.dateObj.getFullYear() === now.getFullYear())
+        ? sum + (Number(t.amount)||0)
+        : sum;
+    },0);
+    totalBox.style.display = "block";
+    totalBox.textContent = `Total reçu ce mois : ${formatAmount(total)} €`;
+  }else{
+    totalBox.style.display = "none";
+    totalBox.textContent = "";
+  }
+
+  if(data.length === 0){
+    list.innerHTML = `<div class="muted">Aucune transaction</div>`;
+    return;
+  }
+
+  // Afficher les 20 plus récentes
+  data.slice(0,20).forEach(t=>{
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div>
+        <div><strong>${t.user.charAt(0).toUpperCase()+t.user.slice(1)}</strong> • ${t.bank.charAt(0).toUpperCase()+t.bank.slice(1)}</div>
+        <div class="muted" style="font-size:13px">${t.date}</div>
+      </div>
+      <div class="amount">+${formatAmount(t.amount)} €</div>
+    `;
+    list.appendChild(div);
+  });
+}
+</script>
+</body>
+</html>
