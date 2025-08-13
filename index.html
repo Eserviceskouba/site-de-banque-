@@ -1,11 +1,11 @@
 <!DOCTYPE html>
+
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <title>E-services - Application Bancaire Sécurisée</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 <style>
   :root{
     --primary:#1e5799;
@@ -103,69 +103,70 @@
   .amount{font-weight:700}
 </style>
 </head>
-<body>
-
+<body><div id="loadingScreen" style="display:none;position:fixed;inset:0;background:rgba(255,255,255,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;font-size:18px;">Chargement...</div>
 <!-- Connexion -->
 <div class="login" id="login">
-  <h2><i class="fa-solid fa-lock"></i> Connexion sécurisée</h2>
-  <input type="password" id="pwd" placeholder="Mot de passe" />
-  <button class="btn" id="loginBtn"><i class="fa-solid fa-right-to-bracket"></i> Se connecter</button>
-  <div class="err" id="loginErr"></div>
+<h2><i class="fa-solid fa-lock"></i> Connexion sécurisée</h2>
+<input id="pwd" placeholder="Mot de passe" type="password"/>
+<button class="btn" id="loginBtn"><i class="fa-solid fa-right-to-bracket"></i> Se connecter</button>
+<div class="err" id="loginErr"></div>
 </div>
-
 <!-- Application -->
 <div class="app" id="app">
-  <div class="header"><h1>E-services</h1></div>
-  <div class="body">
-
-    <!-- Saisie -->
-    <div class="card">
-      <h3><i class="fa-solid fa-hand-holding-dollar"></i> Nouvelle transaction</h3>
-      <div class="row">
-        <div>
-          <label for="bank"><i class="fa-solid fa-university"></i> Banque</label>
-          <select id="bank">
-            <option value="">-- Choisir une banque --</option>
-          </select>
-        </div>
-        <div>
-          <label for="user"><i class="fa-solid fa-user"></i> Client</label>
-          <select id="user">
-            <option value="">-- Choisir un client --</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label for="amount"><i class="fa-solid fa-euro-sign"></i> Montant (€)</label>
-        <input type="number" id="amount" placeholder="Ex: 150" inputmode="decimal" />
-      </div>
-
-      <div style="margin-top:14px; display:flex; gap:10px; align-items:center;">
-        <button class="btn" id="btnAdd"><i class="fa-solid fa-plus"></i> Ajouter</button>
-        <span class="muted" id="hint">Sélectionne une banque, un client et un montant</span>
-      </div>
-      <div id="msg" style="margin-top:10px;"></div>
-    </div>
-
-    <!-- Filtre + Historique -->
-    <div class="card">
-      <h3><i class="fa-solid fa-filter"></i> Filtrer par client</h3>
-      <select id="filterUser">
-        <option value="">-- Tous les clients --</option>
-      </select>
-    </div>
-
-    <div class="card transactions">
-      <h3><i class="fa-solid fa-clock-rotate-left"></i> Historique</h3>
-      <div id="monthlyTotal" class="info" style="display:none;margin-bottom:10px;"></div>
-      <div id="txList"></div>
-    </div>
-
-  </div>
+<div class="header"><h1>E-services</h1></div>
+<div class="body">
+<!-- Saisie -->
+<div class="card">
+<h3><i class="fa-solid fa-hand-holding-dollar"></i> Nouvelle transaction</h3>
+<div class="row">
+<div>
+<label for="bank"><i class="fa-solid fa-university"></i> Banque</label>
+<select id="bank">
+<option value="">-- Choisir une banque --</option>
+</select>
 </div>
-
+<div>
+<label for="user"><i class="fa-solid fa-user"></i> Client</label>
+<select id="user">
+<option value="">-- Choisir un client --</option>
+</select>
+</div>
+</div>
+<div style="margin-top:12px;">
+<label for="amount"><i class="fa-solid fa-euro-sign"></i> Montant (€)</label>
+<input id="amount" inputmode="decimal" placeholder="Ex: 150" type="number"/>
+</div>
+<div style="margin-top:14px; display:flex; gap:10px; align-items:center;">
+<button class="btn" id="btnAdd"><i class="fa-solid fa-plus"></i> Ajouter</button>
+<span class="muted" id="hint">Sélectionne une banque, un client et un montant</span>
+</div>
+<div id="msg" style="margin-top:10px;"></div>
+</div>
+<!-- Filtre + Historique -->
+<div class="card">
+<h3><i class="fa-solid fa-filter"></i> Filtrer par client</h3>
+<select id="filterUser">
+<option value="">-- Tous les clients --</option>
+</select>
+</div>
+<div class="card transactions">
+<h3><i class="fa-solid fa-clock-rotate-left"></i> Historique</h3>
+<div class="info" id="monthlyTotal" style="display:none;margin-bottom:10px;"></div>
+<div id="txList"></div>
+</div>
+</div>
+</div>
 <script>
+function showLoading(show) {
+  document.getElementById('loadingScreen').style.display = show ? 'flex' : 'none';
+}
+function toastOK(msg){
+  document.getElementById('msg').innerHTML = '<div style="color:green">'+msg+'</div>';
+}
+function toastERR(msg){
+  document.getElementById('msg').innerHTML = '<div style="color:red">'+msg+'</div>';
+}
+
 /* =========================
    Config & Données locales
    ========================= */
