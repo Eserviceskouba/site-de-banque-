@@ -184,6 +184,20 @@
     color: var(--muted);
     font-size: 16px;
   }
+  
+  .config-help {
+    background: #fff8e6;
+    border: 1px solid #ffd699;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+  
+  .config-help h4 {
+    margin-top: 0;
+    color: #996600;
+  }
 </style>
 </head>
 <body>
@@ -206,6 +220,18 @@
     </div>
   </div>
   <div class="body">
+
+    <div class="config-help">
+      <h4><i class="fa-solid fa-circle-info"></i> Configuration Google Sheets</h4>
+      <p>Pour connecter cette application à Google Sheets :</p>
+      <ol>
+        <li>Créez une feuille de calcul Google avec les colonnes : ID, Client, Banque, Montant, Date</li>
+        <li>Ouvrez l'éditeur de scripts (Extensions > Apps Script)</li>
+        <li>Copiez le script de la section suivante</li>
+        <li>Déployez le script (Déployer > Nouveau déploiement)</li>
+        <li>Copiez l'URL du déploiement dans le champ ci-dessous</li>
+      </ol>
+    </div>
 
     <!-- Saisie -->
     <div class="card">
@@ -237,6 +263,18 @@
       <div id="msg" style="margin-top:10px;"></div>
     </div>
 
+    <!-- Configuration API -->
+    <div class="card">
+      <h3><i class="fa-solid fa-gear"></i> Configuration API</h3>
+      <div style="margin-top:12px;">
+        <label for="apiUrl"><i class="fa-solid fa-link"></i> URL de l'API Google Sheets</label>
+        <input type="text" id="apiUrl" placeholder="Collez l'URL de votre script déployé" />
+      </div>
+      <button class="btn" id="saveApiBtn" style="margin-top:14px;">
+        <i class="fa-solid fa-floppy-disk"></i> Enregistrer l'URL
+      </button>
+    </div>
+
     <!-- Filtre + Historique -->
     <div class="card">
       <h3><i class="fa-solid fa-filter"></i> Filtrer par client</h3>
@@ -264,7 +302,7 @@
    Config & Données locales
    ========================= */
 const CORRECT_PASSWORD = "Eservices1@#*Kouba";
-const API_URL = "https://script.google.com/macros/s/AKfycbxcheSls3fqJIIb3J_MmrGM75kRURQIC3LbREzou6wxL1anLFBS35Z97SHvagA4g0nQ/exec";
+let API_URL = ""; // Sera chargée depuis localStorage
 
 // Banques & Utilisateurs
 const banks = ["paypal","paysera","moneco","nickel","myfine","bankera","paypal bus","skrill","netller"];
@@ -368,47 +406,100 @@ function populateFilterUsers(){
 }
 
 function initApp(){
+  // Charger l'URL de l'API depuis localStorage
+  API_URL = localStorage.getItem('googleSheetsApiUrl') || '';
+  $("apiUrl").value = API_URL;
+  
   populateDropdowns();
   populateFilterUsers();
   $("btnAdd").addEventListener("click", handleAdd);
   $("filterUser").addEventListener("change", renderHistory);
+  $("saveApiBtn").addEventListener("click", saveApiUrl);
   
-  // Afficher l'indicateur de chargement
-  showLoading(true);
-  
-  // Charger les transactions depuis Google Sheets au démarrage
-  loadTransactionsFromSheet();
+  // Si une URL API est configurée, charger les données
+  if (API_URL) {
+    // Afficher l'indicateur de chargement
+    showLoading(true);
+    loadTransactionsFromSheet();
+  } else {
+    toastERR("Veuillez configurer l'URL de l'API Google Sheets");
+  }
   
   // Démarrer la synchronisation périodique
-  syncInterval = setInterval(loadTransactionsFromSheet, 30000); // Toutes les 30 secondes
+  syncInterval = setInterval(() => {
+    if (API_URL) loadTransactionsFromSheet();
+  }, 30000); // Toutes les 30 secondes
+}
+
+function saveApiUrl() {
+  API_URL = $("apiUrl").value.trim();
+  if (API_URL) {
+    localStorage.setItem('googleSheetsApiUrl', API_URL);
+    toastOK("URL API enregistrée avec succès");
+    showLoading(true);
+    loadTransactionsFromSheet();
+  } else {
+    toastERR("Veuillez entrer une URL valide");
+  }
 }
 
 /* =========================
    Google Sheets (GET/POST)
    ========================= */
 async function loadTransactionsFromSheet() {
+  if (!API_URL) return;
+  
   try {
     updateSyncStatus("Synchronisation...", true);
     
-    const res = await fetch(API_URL, { cache: "no-store" });
+    // Ajouter un timestamp pour éviter la mise en cache
+    const urlWithCacheBuster = API_URL + (API_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+    
+    const res = await fetch(urlWithCacheBuster, { cache: "no-store" });
     if (!res.ok) {
       throw new Error(`Erreur HTTP: ${res.status}`);
     }
     
-    const data = await res.json(); // [ [ID, user, bank, amount, date], ... ]
+    const data = await res.json();
+    
+    // Vérifier si la réponse est valide
+    if (!Array.isArray(data)) {
+      throw new Error("Réponse invalide de l'API");
+    }
     
     // ignorer l'entête
     const newTransactions = data.slice(1).map(r => {
-      const d = new Date(r[4]);
+      // Vérifier que la ligne a suffisamment de colonnes
+      if (r.length < 5) {
+        return null;
+      }
+      
+      // Convertir la date - essayer plusieurs formats
+      let dateObj = new Date();
+      try {
+        if (r[4]) {
+          dateObj = new Date(r[4]);
+          if (isNaN(dateObj.getTime())) {
+            // Essayer un autre format
+            const parts = r[4].split(/[\s,/:]+/);
+            if (parts.length >= 3) {
+              dateObj = new Date(parts[2], parts[1]-1, parts[0], parts[3], parts[4]);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Erreur de conversion de date", r[4]);
+      }
+      
       return {
-        id: r[0],
-        user: String(r[1]||"").toLowerCase(),
-        bank: String(r[2]||"").toLowerCase(),
-        amount: parseFloat(r[3]||0),
-        date: r[4],
-        dateObj: isNaN(d.getTime()) ? new Date() : d
+        id: r[0] || Date.now(),
+        user: String(r[1] || "").toLowerCase(),
+        bank: String(r[2] || "").toLowerCase(),
+        amount: parseFloat(r[3] || 0),
+        date: r[4] || new Date().toLocaleString("fr-FR"),
+        dateObj: dateObj
       };
-    }).sort((a,b)=>b.dateObj - a.dateObj);
+    }).filter(t => t !== null).sort((a,b)=>b.dateObj - a.dateObj);
     
     // Calculer le hash pour détecter les changements
     const newHash = calculateDataHash(newTransactions);
@@ -437,7 +528,7 @@ async function loadTransactionsFromSheet() {
     
     // Si c'est le premier chargement, afficher un message d'erreur
     if (isInitialLoad) {
-      toastERR("Impossible de charger les transactions. Vérifiez votre connexion internet.");
+      toastERR("Impossible de charger les transactions: " + e.message);
     }
   } finally {
     // Cacher l'indicateur de chargement
@@ -446,6 +537,11 @@ async function loadTransactionsFromSheet() {
 }
 
 async function sendTransactionToSheet(tx){
+  if (!API_URL) {
+    toastERR("URL API non configurée");
+    return;
+  }
+  
   try {
     updateSyncStatus("Envoi en cours...", true);
     
@@ -495,7 +591,7 @@ async function handleAdd(){
     // Réinitialiser le formulaire
     $("amount").value = "";
   } catch (e) {
-    toastERR("Erreur lors de l'enregistrement de la transaction.");
+    toastERR("Erreur lors de l'enregistrement de la transaction: " + e.message);
   }
 }
 
